@@ -3,8 +3,9 @@ from sqlmodel import SQLModel, Field, Relationship
 
 class Category(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
+    name: str = Field(index=True, unique=True) 
 
+    
     videos: List["Video"] = Relationship(back_populates="category")
 
 
@@ -15,7 +16,8 @@ class Video(SQLModel, table=True):
     thumbnail_url: str
     video_url: str
 
-    category_id: Optional[int] = Field(default=None, foreign_key="category.id")
+    
+    category_id: int = Field(foreign_key="category.id") 
 
     category: Optional[Category] = Relationship(back_populates="videos")
     
@@ -29,7 +31,6 @@ class Comment(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str
     content: str
-
-    video_id: Optional[int] = Field(default=None, foreign_key="video.id")
+    video_id: int = Field(foreign_key="video.id")
 
     video: Optional[Video] = Relationship(back_populates="comments")
