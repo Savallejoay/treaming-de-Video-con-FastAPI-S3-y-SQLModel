@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Player | Neon Stream</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #0d0d1a;
+            --secondary: #9b51e0;
+            --accent: #00f2ff;
+            --text: #e0e0e0;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Orbitron', sans-serif;
+            background: var(--primary);
+            color: var(--text);
+        }
+
+        header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid var(--secondary);
+            box-shadow: 0 0 15px var(--secondary);
+        }
+
+        header h1 {
+            margin: 0;
+            color: white;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .video-box {
+            background: var(--glass);
+            padding: 15px;
+            border-radius: 15px;
+        }
+
+        video {
+            width: 100%;
+            border-radius: 10px;
+        }
+
+        .info {
+            margin-top: 10px;
+        }
+
+        .comments {
+            background: var(--glass);
+            padding: 15px;
+            border-radius: 15px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .comment {
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 10px 0;
+        }
+
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+            border: none;
+        }
+
+        button {
+            background: var(--secondary);
+            color: white;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+
+<body>
+
+<header>
+    <h1>NEON STREAM PLAYER</h1>
+</header>
+
+<div class="container">
+    <div class="video-box">
+        <video id="videoPlayer" controls></video>
+        <div class="info">
+            <h2 id="title"></h2>
+            <p id="description"></p>
+        </div>
+    </div>
+
+    <div class="comments">
+        <h3>Comentarios</h3>
+        <div id="commentsList"></div>
+
+        <div style="margin-top: 20px; border-top: 1px solid var(--secondary); padding-top: 15px;">
+            <input id="username" placeholder="Tu nombre">
+            <input id="commentText" placeholder="Escribe un comentario...">
+            <button id="btnEnviar">Enviar</button>
+        </div>
+
+        <div id="recommendationsContainer" style="margin-top: 30px;">
+            <h3>Recomendados</h3>
+            <div id="recList"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+const API = "http://127.0.0.1:8000/api";
+const params = new URLSearchParams(window.location.search);
+const videoId = params.get("id");
+
+let currentCategory = null;
+
+
+function setupEvents() {
+    document.getElementById("btnEnviar").addEventListener("click", addComment);
+}
+
+async function loadVideo() {
+    try {
+        const res = await fetch(`${API}/videos/${videoId}`);
+        const video = await res.json();
+
+        currentCategory = video.category_id;
+
+        document.getElementById("title").textContent = video.title;
+        document.getElementById("description").textContent = video.description;
+        document.getElementById("videoPlayer").src = video.video_url;
+
+        if (currentCategory) loadRecommendations();
+    } catch (e) {
+        console.error("Error cargando video:", e);
+    }
+}
+
+async function loadComments() {
+    const res = await fetch(`${API}/comments/${videoId}`);
+    const comments = await res.json();
+
+    const container = document.getElementById("commentsList");
+    container.textContent = ""; 
+
+    comments.forEach(c => {
+        const div = document.createElement("div");
+        div.className = "comment";
+        
+        
+        const userSpan = document.createElement("strong");
+        userSpan.textContent = `${c.username}: `;
+        userSpan.style.color = "var(--accent)";
+
+        const contentSpan = document.createElement("span");
+        contentSpan.textContent = c.content;
+
+        div.appendChild(userSpan);
+        div.appendChild(contentSpan);
+        container.appendChild(div);
+    });
+}
+
+async function addComment() {
+    const usernameInput = document.getElementById("username");
+    const contentInput = document.getElementById("commentText");
+
+    const username = usernameInput.value.trim();
+    const content = contentInput.value.trim();
+
+    if (!username || !content) {
+        alert("Por favor rellena ambos campos");
+        return;
+    }
+
+    const res = await fetch(`${API}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            username: username,
+            content: content,
+            video_id: parseInt(videoId)
+        })
+    });
+
+    if (res.ok) {
+        contentInput.value = ""; 
+        loadComments(); 
+    }
+}
+
+async function loadRecommendations() {
+    const res = await fetch(`${API}/videos/recommendations/${currentCategory}`);
+    const videos = await res.json();
+
+    const list = document.getElementById("recList");
+    list.textContent = "";
+
+    videos.forEach(v => {
+
+        if (v.id == videoId) return;
+
+        const item = document.createElement("div");
+        item.className = "comment";
+        item.style.cursor = "pointer";
+        item.style.transition = "0.3s";
+        
+        item.onmouseover = () => item.style.color = "var(--accent)";
+        item.onmouseout = () => item.style.color = "var(--text)";
+
+        item.textContent = `▶ ${v.title}`;
+
+        item.addEventListener("click", () => {
+            window.location.href = `player.html?id=${v.id}`;
+        });
+
+        list.appendChild(item);
+    });
+}
+
+
+document.addEventListener("DOMContentLoaded", () => {
+    setupEvents();
+    loadVideo();
+    loadComments();
+});
+
+</script>
+</body>
+</html>
