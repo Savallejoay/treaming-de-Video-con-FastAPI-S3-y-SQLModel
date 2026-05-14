@@ -33,59 +33,136 @@
         header h1 {
             margin: 0;
             color: white;
+            font-size: 1.5rem;
         }
 
         .container {
             display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 20px;
+            grid-template-columns: 3fr 1fr; 
+            gap: 25px;
             padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
         }
 
         .video-box {
             background: var(--glass);
             padding: 15px;
             border-radius: 15px;
+            border: 1px solid rgba(155, 81, 224, 0.2);
         }
 
         video {
             width: 100%;
             border-radius: 10px;
+            background: black;
+            aspect-ratio: 16 / 9;
         }
 
-        .info {
-            margin-top: 10px;
+        .info h2 {
+            margin: 15px 0 5px 0;
+            color: var(--accent);
+        }
+
+        .info p {
+            margin: 0;
+            font-size: 0.9rem;
+            opacity: 0.8;
         }
 
         .comments {
             background: var(--glass);
-            padding: 15px;
+            padding: 20px;
             border-radius: 15px;
-            max-height: 80vh;
-            overflow-y: auto;
         }
 
         .comment {
             border-bottom: 1px solid rgba(255,255,255,0.1);
-            padding: 10px 0;
+            padding: 12px 0;
+            font-size: 0.9rem;
         }
 
         input, button {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             margin-top: 10px;
-            border-radius: 5px;
-            border: none;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.3);
+            color: white;
+            box-sizing: border-box;
+            font-family: 'Orbitron', sans-serif;
         }
 
         button {
             background: var(--secondary);
-            color: white;
+            font-weight: bold;
             cursor: pointer;
+            border: none;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            box-shadow: 0 0 15px var(--secondary);
+            transform: translateY(-2px);
+        }
+
+        .recommendations-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .rec-item {
+            display: flex;
+            gap: 12px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 10px;
+            transition: 0.3s;
+            background: rgba(255,255,255,0.02);
+        }
+
+        .rec-item:hover {
+            background: rgba(155, 81, 224, 0.1);
+        }
+
+        .rec-thumb {
+            width: 140px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 6px;
+            background: black;
+        }
+
+        .rec-info {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .rec-info strong {
+            font-size: 0.85rem;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .rec-info span {
+            font-size: 0.7rem;
+            color: var(--accent);
+        }
+
+        @media (max-width: 900px) {
+            .container { grid-template-columns: 1fr; }
         }
     </style>
 </head>
-
 
 <body>
 
@@ -94,28 +171,33 @@
 </header>
 
 <div class="container">
-    <div class="video-box">
-        <video id="videoPlayer" controls></video>
-        <div class="info">
-            <h2 id="title"></h2>
-            <p id="description"></p>
+    <!-- COLUMNA PRINCIPAL -->
+    <div class="main-content">
+        <div class="video-box">
+            <!-- Autoplay + Muted para que arranque solo sin bloqueos -->
+            <video id="videoPlayer" controls autoplay muted playsinline></video>
+            <div class="info">
+                <h2 id="title">Cargando...</h2>
+                <p id="description"></p>
+            </div>
+        </div>
+
+        <div class="comments">
+            <h3>Comentarios</h3>
+            <div id="commentsList"></div>
+
+            <div style="margin-top: 20px; border-top: 1px solid var(--secondary); padding-top: 15px;">
+                <input id="username" placeholder="Tu nombre">
+                <input id="commentText" placeholder="Escribe un comentario...">
+                <button id="btnEnviar">ENVIAR COMENTARIO</button>
+            </div>
         </div>
     </div>
 
-    <div class="comments">
-        <h3>Comentarios</h3>
-        <div id="commentsList"></div>
-
-        <div style="margin-top: 20px; border-top: 1px solid var(--secondary); padding-top: 15px;">
-            <input id="username" placeholder="Tu nombre">
-            <input id="commentText" placeholder="Escribe un comentario...">
-            <button id="btnEnviar">Enviar</button>
-        </div>
-
-        <div id="recommendationsContainer" style="margin-top: 30px;">
-            <h3>Recomendados</h3>
-            <div id="recList"></div>
-        </div>
+    <!-- COLUMNA LATERAL -->
+    <div class="recommendations-sidebar">
+        <h3>Siguiente</h3>
+        <div id="recList"></div>
     </div>
 </div>
 
@@ -125,7 +207,6 @@ const params = new URLSearchParams(window.location.search);
 const videoId = params.get("id");
 
 let currentCategory = null;
-
 
 function setupEvents() {
     document.getElementById("btnEnviar").addEventListener("click", addComment);
@@ -140,7 +221,9 @@ async function loadVideo() {
 
         document.getElementById("title").textContent = video.title;
         document.getElementById("description").textContent = video.description;
-        document.getElementById("videoPlayer").src = video.video_url;
+        
+        const player = document.getElementById("videoPlayer");
+        player.src = video.video_url;
 
         if (currentCategory) loadRecommendations();
     } catch (e) {
@@ -158,7 +241,6 @@ async function loadComments() {
     comments.forEach(c => {
         const div = document.createElement("div");
         div.className = "comment";
-        
         
         const userSpan = document.createElement("strong");
         userSpan.textContent = `${c.username}: `;
@@ -209,18 +291,18 @@ async function loadRecommendations() {
     list.textContent = "";
 
     videos.forEach(v => {
-
         if (v.id == videoId) return;
 
         const item = document.createElement("div");
-        item.className = "comment";
-        item.style.cursor = "pointer";
-        item.style.transition = "0.3s";
-        
-        item.onmouseover = () => item.style.color = "var(--accent)";
-        item.onmouseout = () => item.style.color = "var(--text)";
+        item.className = "rec-item";
 
-        item.textContent = `▶ ${v.title}`;
+        item.innerHTML = `
+            <video class="rec-thumb" src="${v.video_url}#t=0.5" muted preload="metadata"></video>
+            <div class="rec-info">
+                <strong>${v.title}</strong>
+                <span>Reproducir ahora</span>
+            </div>
+        `;
 
         item.addEventListener("click", () => {
             window.location.href = `player.html?id=${v.id}`;
@@ -230,13 +312,12 @@ async function loadRecommendations() {
     });
 }
 
-
 document.addEventListener("DOMContentLoaded", () => {
     setupEvents();
     loadVideo();
     loadComments();
 });
-
 </script>
+
 </body>
 </html>
