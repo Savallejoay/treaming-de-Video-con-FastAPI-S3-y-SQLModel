@@ -191,6 +191,7 @@
             </div>
         </div>
     </div>
+
     <div class="recommendations-sidebar">
         <h3>Siguiente</h3>
         <div id="recList"></div>
@@ -202,8 +203,6 @@ const API = "http://127.0.0.1:8000/api";
 const params = new URLSearchParams(window.location.search);
 const videoId = params.get("id");
 
-let currentCategory = null;
-
 function setupEvents() {
     document.getElementById("btnEnviar").addEventListener("click", addComment);
 }
@@ -213,15 +212,13 @@ async function loadVideo() {
         const res = await fetch(`${API}/videos/${videoId}`);
         const video = await res.json();
 
-        currentCategory = video.category_id;
-
         document.getElementById("title").textContent = video.title;
         document.getElementById("description").textContent = video.description;
         
         const player = document.getElementById("videoPlayer");
         player.src = video.video_url;
 
-        if (currentCategory) loadRecommendations();
+        loadRecommendations();
     } catch (e) {
         console.error("Error cargando video:", e);
     }
@@ -280,32 +277,41 @@ async function addComment() {
 }
 
 async function loadRecommendations() {
-    const res = await fetch(`${API}/videos/recommendations/${currentCategory}`);
-    const videos = await res.json();
+    try {
+        const res = await fetch(`${API}/videos`);
+        const videos = await res.json();
 
-    const list = document.getElementById("recList");
-    list.textContent = "";
+        const list = document.getElementById("recList");
+        list.textContent = "";
 
-    videos.forEach(v => {
-        if (v.id == videoId) return;
+        const videosShuffle = videos.sort(() => 0.5 - Math.random());
 
-        const item = document.createElement("div");
-        item.className = "rec-item";
+        videosShuffle.forEach(v => {
+    
+            if (v.id == videoId) return;
 
-        item.innerHTML = `
-            <video class="rec-thumb" src="${v.video_url}#t=0.5" muted preload="metadata"></video>
-            <div class="rec-info">
-                <strong>${v.title}</strong>
-                <span>Reproducir ahora</span>
-            </div>
-        `;
+            if (list.childElementCount >= 6) return;
 
-        item.addEventListener("click", () => {
-            window.location.href = `player.html?id=${v.id}`;
+            const item = document.createElement("div");
+            item.className = "rec-item";
+
+            item.innerHTML = `
+                <video class="rec-thumb" src="${v.video_url}#t=0.5" muted preload="metadata"></video>
+                <div class="rec-info">
+                    <strong>${v.title}</strong>
+                    <span>Siguiente video</span>
+                </div>
+            `;
+
+            item.addEventListener("click", () => {
+                window.location.href = `player.html?id=${v.id}`;
+            });
+
+            list.appendChild(item);
         });
-
-        list.appendChild(item);
-    });
+    } catch (error) {
+        console.error("Error cargando recomendaciones:", error);
+    }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
